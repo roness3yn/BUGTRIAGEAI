@@ -1,0 +1,5 @@
+severity_id,severity_name
+1,High
+2,Medium
+3,Critical
+4,Low

@@ -1,0 +1,17 @@
+category_id,category_name
+1,API Bug
+2,Memory Leak
+3,Cloud Configuration Bug
+4,Authentication Bug
+5,Logging Bug
+6,Frontend Routing Bug
+7,CI/CD Bug
+8,UI Bug
+9,Concurrency Bug
+10,Monitoring Bug
+11,Performance Bug
+12,Authorization Bug
+13,Deployment Bug
+14,Backend Logic Bug
+15,Database Bug
+16,Security Vulnerability
