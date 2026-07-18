@@ -1,5 +1,5 @@
 priority_id,priority_name
-1,High
+1,Low
 2,Normal
-3,Low
+3,High
 4,Urgent
