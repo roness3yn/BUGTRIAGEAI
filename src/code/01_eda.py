@@ -35,27 +35,6 @@ from src.config import config
 from src.utils import utils
 
 # =====================================================================
-# Scikit-Learn Feature Extraction & Data Preprocessing
-# =====================================================================
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-
-# =====================================================================
-# Model Training & Pipeline Infrastructure
-# =====================================================================
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-
-# =====================================================================
-# Model Evaluation Metrics
-# =====================================================================
-from sklearn.metrics import classification_report
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-
-# =====================================================================
 # Visual Plotting Configuration
 # =====================================================================
 # Apply a clean, structured canvas style for generated graphs

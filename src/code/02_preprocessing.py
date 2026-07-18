@@ -171,9 +171,3 @@ if config.bug_data_filled.duplicated().any():
     print(config.bug_data_filled.duplicated().sum())
 else:
     print(f"\n{utils.color_text('There are no duplicate values in the dataset', utils.GREEN)}")
-
-# =============================================================================================================
-# Feature Engineering & Composite Metrics
-# =============================================================================================================
-# Calculate unified balanced index scale value using uniform integer divisions (floor division)
-config.bug_data_filled["severity_priority"] = (config.bug_data_filled["severity"] + config.bug_data_filled["priority"]) // 2
