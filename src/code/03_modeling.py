@@ -19,13 +19,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from mord import LogisticAT
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from lightgbm import LGBMClassifier
 
 # =====================================================================
 # Scikit-Learn Feature Extraction & Data Preprocessing
 # =====================================================================
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
 
 # =====================================================================
 # Model Evaluation Metrics
@@ -48,41 +56,15 @@ if project_root not in sys.path:
 # =====================================================================
 from src.config import config
 from src.utils import utils
+from src.features.CONSTANS import CRASH_KEYWORDS, FEATURE_COLUMNS, TARGET_COLUMN, CUSTOM_STOP_WORDS
 
 # =====================================================================
 # Data Loading Logic
 # =====================================================================
 if getattr(config, "bug_data", None) is not None:
-        print("Bug data already loaded.")
+        print(f"\n{utils.color_text('normalized_dataset_bugs.csv already loaded...', utils.YELLOW)}")
 else:
-    config.bug_data_filled = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'normalized_dataset_bugs.csv'))
-
-# =====================================================================
-# Relational Dimension Remapping & Column Normalization
-# =====================================================================
-# Load dimension metadata lookup tables
-dim_environments = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_environments.csv'))
-dim_domains = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_domains.csv'))
-dim_categories = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_categories.csv'))
-dim_tech_stack = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_tech_stacks.csv'))
-dim_severities = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_severities.csv'))
-dim_priorities = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_priorities.csv'))
-
-# Translate IDs to names using map lookups
-env_map = dict(zip(dim_environments['environment_id'], dim_environments['environment_name']))
-dmn_map = dict(zip(dim_domains['domain_id'], dim_domains['domain_name']))
-cat_map = dict(zip(dim_categories['category_id'], dim_categories['category_name']))
-tes_map = dict(zip(dim_tech_stack['tech_stack_id'], dim_tech_stack['tech_stack_name']))
-sev_map = dict(zip(dim_severities['severity_id'], dim_severities['severity_name']))
-pri_map = dict(zip(dim_priorities['priority_id'], dim_priorities['priority_name']))
-
-# Convert numerical IDs into human-readable categorical string headers
-config.bug_data_filled["environment"] = config.bug_data_filled["environment_id"].map(env_map)
-config.bug_data_filled["bug_domain"] = config.bug_data_filled["domain_id"].map(dmn_map)
-config.bug_data_filled["bug_category"] = config.bug_data_filled["category_id"].map(cat_map)
-config.bug_data_filled["tech_stack"] = config.bug_data_filled["tech_stack_id"].map(tes_map)
-config.bug_data_filled["severity"] = config.bug_data_filled["severity_id"].map(sev_map)
-config.bug_data_filled["priority"] = config.bug_data_filled["priority_id"].map(pri_map)
+    config.bug_data = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'normalized_dataset_bugs.csv'))
 
 # =====================================================================
 # Console Preparation
@@ -90,56 +72,27 @@ config.bug_data_filled["priority"] = config.bug_data_filled["priority_id"].map(p
 # Flush out previous command terminal print artifacts to make the report readable
 utils.clear_console()
 
-# =============================================================================================================
-# Feature Engineering & Composite Metrics
-# =============================================================================================================
-# Calculate unified balanced index scale value using uniform integer divisions (floor division)
-config.bug_data_filled["severity_priority"] = (config.bug_data_filled["severity_id"] + config.bug_data_filled["priority_id"]) // 2
 
 # =====================================================================
-# Feature Extraction Synthesis (NLP Text Synthesis)
+# Define test/train split
 # =====================================================================
-# Concatenate unstructured summary components into a singular text array block
-config.bug_data_filled["text"] = (
-    config.bug_data_filled["title"].fillna("") +
-    " " +
-    config.bug_data_filled["description"].fillna("")
+#Extra metadata features showing urgency
+crash_pattern = r"|".join(CRASH_KEYWORDS)
+#Extract metadata features using efficient, vectorized pandas string methods
+config.bug_data["text_length"] = config.bug_data["text"].str.len().fillna(0).astype(int)
+config.bug_data["exclamation_count"] = (
+    config.bug_data["text"].str.count(r"!").fillna(0).astype(int)
+)
+#Vectorized keyword check (no slow .apply() or python loops)
+config.bug_data["has_crash_keyword"] = (
+    config.bug_data["text"]
+    .str.contains(crash_pattern, case=False, na=False)
+    .astype(int)
 )
 
-# =====================================================================
-# Array Isolations (Independent & Dependent Matrices)
-# =====================================================================
-# Filter specific multivariable data elements intended for training inputs
-x = config.bug_data_filled[
-    [
-        "text",
-        "error_code",
-        "bug_domain",
-        "bug_category",
-        "environment",
-        "tech_stack"
-    ]
-]
+x = config.bug_data[FEATURE_COLUMNS].copy()
+y = config.bug_data[TARGET_COLUMN].copy()
 
-# Set the combined label value array as the dependent target output variable
-y = config.bug_data_filled["severity_priority"]
-
-# =====================================================================
-# Data Dimension Verification Logs
-# =====================================================================
-# Audit row counts representing distinct output targets
-print(f"\n{utils.color_text('[Target class distributions]', utils.CYAN + utils.BOLD)}")
-print(config.bug_data_filled["severity_priority"].value_counts().to_frame(name="Count"))
-
-# Verify multi-modal dataset row and column shapes prior to splitting
-print(f"\n{utils.color_text('[Feature matrix shape]', utils.CYAN + utils.BOLD)}")
-print(config.bug_data_filled.shape)
-
-
-# =====================================================================
-# Stratified Dataset Partitioning
-# =====================================================================
-# Allocate an 80/20 train-test division split, maintaining matching target category densities
 x_train, x_test, y_train, y_test = train_test_split(
     x,
     y,
@@ -149,105 +102,168 @@ x_train, x_test, y_train, y_test = train_test_split(
 )
 
 # =====================================================================
-# Preprocessing Data Pipeline Architecture
+# Add "description" to standard English stop words
 # =====================================================================
-# Build automatic transformations matching input data structural formats
+#Pipelines per feature type (includes imputation to prevent NaN crashes)
+text_transformer = TfidfVectorizer(
+    stop_words=list(CUSTOM_STOP_WORDS),
+    max_features=3000,
+    ngram_range=(1, 2),
+    min_df=10,
+    max_df=0.7,
+)
+
+categorical_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="constant", fill_value="unknown")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
+])
+
+numeric_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler()),
+])
+
+#Master Preprocessor
 preprocessor = ColumnTransformer(
-    transformers = [
-         # Sub-Pipeline A: Numerical Text Vectorization via TF-IDF
-        (
-          "text",
-         TfidfVectorizer(
-             stop_words = 'english', #Remove common words
-             max_features = 3000, #Keeps 3000 most informative words
-             ngram_range = (1, 2), #Uses single and two-word phrases
-             min_df = 2 #Ignores words that only appear once)
-         ),
-         "text"
-        ),
-        # Sub-Pipeline B: Discrete Categorical One-Hot Conversion Encoding
-        (
-            "categorical",
-            # Convert text values into numeric dummy flag arrays, ignoring runtime mismatches
-            OneHotEncoder(handle_unknown="ignore"),
-            [
-                "error_code",           # Core Fix: Swapped out "text" column for missing error_code item
-                "bug_domain",
-                "bug_category",
-                "environment",
-                "tech_stack",
-            ]
-        )
+    transformers=[
+        ("text_tf_idf", text_transformer, "text"),
+        ("categorical", categorical_transformer, ["product_name", "component_name"]),
+        ("numeric", numeric_transformer, ["text_length", "exclamation_count", "has_crash_keyword"]),
     ]
 )
+
 
 # =====================================================================
 # Logistic Regression Model Architecture
 # =====================================================================
-# Construct an end-to-end execution pipeline binding preprocessing stages to a linear classifier
+#set class weights
+custom_weights = {
+    "1": 1.5,
+    "2": 1,
+    "3": 1.5
+    }
+#Ordinal Logistic Regression
 lr_pipeline = Pipeline([
     ("preprocessor", preprocessor),
-    ("classifier", LogisticRegression(max_iter=1000, random_state=42))
+    ("classifier", LogisticAT(max_iter = 5000))
 ])
 
-# Fit the underlying feature matrices and optimization parameters to training vectors
-lr_pipeline.fit(x_train, y_train)
+#apply weights
+sample_weights = compute_sample_weight(
+    class_weight = 'balanced',
+    y = y_train
+)
 
-# Generate category predictions against the isolated test dataset split
+#sample_weights = y_train.map(custom_weights).values
+
+#Train Model
+lr_pipeline.fit(x_train, y_train, classifier__sample_weight = sample_weights)
+
+#Test Model
 lr_predictions = lr_pipeline.predict(x_test)
 
-# =====================================================================
-# Logistic Regression Metrics Evaluation Logs
-# =====================================================================
-# Output descriptive, colorized performance report headings for the linear architecture
-print(f"\n{utils.color_text('=== LOGISTIC REGRESSION BENCHMARK REPORT ===', utils.CYAN + utils.BOLD)}")
-
-# Log raw categorical accuracy calculation score results
-print(f"\n{utils.color_text('[Model Accuracy]', utils.BOLD)}")
-print(f"{accuracy_score(y_test, lr_predictions):.4f}")
-
-# Output localized precision, recall, and f1-score evaluations per label class
-print(f"\n{utils.color_text('[Classification Metrics Detail]', utils.BOLD)}")
+#Evaluate Model
+print(f"\n{utils.color_text('[Ordinal Logistic Regression]', utils.CYAN + utils.BOLD)}")
+print(f"{utils.color_text('[Accuracy:]', utils.CYAN + utils.BOLD)}")
+print(accuracy_score(y_test, lr_predictions))
 print(classification_report(y_test, lr_predictions))
-
-# Output raw frequency matrix mappings detailing correct classifications vs false indicators
-print(f"\n{utils.color_text('[Confusion Matrix Contingency Table]', utils.BOLD)}")
 print(confusion_matrix(y_test, lr_predictions))
-
+#confidence score
+print(lr_pipeline.predict_proba(x_test))
 
 # =====================================================================
 # Random Forest Model Architecture
 # =====================================================================
-# Construct an ensemble tree pipeline utilizing identical preprocessing transformations
+#Random Forest
 rf_pipeline = Pipeline([
     ("preprocessor", preprocessor),
     ("classifier", RandomForestClassifier(
-        n_estimators=200,      # Generate a forest ensemble of 200 distinct decision tree branches
-        random_state=42,       # Establish an execution state seed variable to replicate findings
-        max_depth=None          # Expand leaf nodes dynamically until elements are completely homogeneous
+        class_weight = 'balanced_subsample',
+        n_estimators = 100,
+        random_state = 42,
+        max_depth = 20,
+        n_jobs = -1
     ))
 ])
 
-# Train ensemble estimators utilizing uniform random bootstrap samples from historical records
+#Train
 rf_pipeline.fit(x_train, y_train)
 
-# Generate category predictions from majority voting calculations across the tree nodes
+#Test
 rf_predictions = rf_pipeline.predict(x_test)
 
-# =====================================================================
-# Random Forest Metrics Evaluation Logs
-# =====================================================================
-# Output descriptive, colorized performance report headings for the ensemble tree architecture
-print(f"\n{utils.color_text('=== RANDOM FOREST BENCHMARK REPORT ===', utils.GREEN + utils.BOLD)}")
-
-# Log raw categorical accuracy calculation score results
-print(f"\n{utils.color_text('[Model Accuracy]', utils.BOLD)}")
-print(f"{accuracy_score(y_test, rf_predictions):.4f}")
-
-# Output localized precision, recall, and f1-score evaluations per label class
-print(f"\n{utils.color_text('[Classification Metrics Detail]', utils.BOLD)}")
+#Evaluate
+print(f"\n{utils.color_text('[Random Forest]', utils.CYAN + utils.BOLD)}")
+print(f"{utils.color_text('[Accuracy]', utils.CYAN + utils.BOLD)}")
+print(accuracy_score(y_test, rf_predictions))
 print(classification_report(y_test, rf_predictions))
-
-# Output raw frequency matrix mappings detailing correct classifications vs false indicators
-print(f"\n{utils.color_text('[Confusion Matrix Contingency Table]', utils.BOLD)}")
 print(confusion_matrix(y_test, rf_predictions))
+
+
+calibrated_weights = {
+    1: 9,
+    2: 1,
+    3: 6
+}
+
+# =====================================================================
+# LightGBM pipeline
+# =====================================================================
+lgb_pipeline = Pipeline([
+    ("preprocessor", preprocessor),
+    ("classifier", LGBMClassifier(
+        objective = "multiclass",
+        class_weight = 'balanced',
+        n_estimators = 300,
+        learning_rate = 0.04,
+        max_depth = 6,
+        min_child_samples = 25,
+        num_leaves = 31,
+        random_state = 42,
+        n_jobs = -1,
+        verbose = -1
+    ))
+])
+
+#Train model
+lgb_pipeline.fit(x_train, y_train)
+
+#Test model
+lgb_predictions = lgb_pipeline.predict(x_test)
+
+#Evaluate
+print(f"\n{utils.color_text('[LightGBM]', utils.CYAN + utils.BOLD)}")
+print(f"{utils.color_text('[Accuracy]', utils.CYAN + utils.BOLD)}")
+print(accuracy_score(y_test, lgb_predictions))
+print(classification_report(y_test, lgb_predictions))
+print(confusion_matrix(y_test, lgb_predictions))
+
+# 1. Extract feature names from the preprocessor steps in the exact order generated
+text_features = lr_pipeline.named_steps['preprocessor'] \
+                          .named_transformers_['text_tf_idf'] \
+                          .get_feature_names_out()
+
+cat_features = lr_pipeline.named_steps['preprocessor'] \
+                         .named_transformers_['categorical'] \
+                         .get_feature_names_out()
+
+num_features = lr_pipeline.named_steps['preprocessor'] \
+                         .named_transformers_['numeric'] \
+                         .get_feature_names_out()
+
+all_feature_names = np.concatenate([text_features, cat_features, num_features])
+
+#Extract linear coefficients from the LogisticAT classifier
+# mord stores coefficients in .coef_ (1D array matching feature space)
+coefficients = lr_pipeline.named_steps['classifier'].coef_
+
+#Create a DataFrame mapping features to their directional impact
+feature_impact_df = pd.DataFrame({
+    'Feature': all_feature_names,
+    'Coefficient': coefficients,
+    'Absolute_Impact': np.abs(coefficients) # Measure overall strength regardless of direction
+}).sort_values(by='Absolute_Impact', ascending=False)
+
+#Separate into top drivers for High and Low severity
+print(f"\n{utils.color_text('=== TOP 15 MOST INFLUENTIAL FEATURES (ORDINAL LOGISTIC) ===', utils.CYAN + utils.BOLD)}")
+print(feature_impact_df.head(50)[['Feature', 'Coefficient']].to_string(index=False))

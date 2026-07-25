@@ -20,7 +20,10 @@ from sklearn.model_selection import cross_val_score
 # =====================================================================
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from mord import LogisticAT
+from lightgbm import LGBMClassifier
 
 # =====================================================================
 # Project-Specific Directory Setup
@@ -37,6 +40,7 @@ if project_root not in sys.path:
 # =====================================================================
 from src.config import config
 from src.utils import utils
+from src.features.CONSTANS import CRASH_KEYWORDS, FEATURE_COLUMNS, TARGET_COLUMN, CUSTOM_STOP_WORDS
 
 # =====================================================================
 # Data Loading Logic
@@ -44,34 +48,7 @@ from src.utils import utils
 if getattr(config, "bug_data", None) is not None:
         print("Bug data already loaded.")
 else:
-    config.bug_data_filled = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'normalized_dataset_bugs.csv'))
-
-# =====================================================================
-# Relational Dimension Remapping & Column Normalization
-# =====================================================================
-# Load dimension metadata lookup tables
-dim_environments = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_environments.csv'))
-dim_domains = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_domains.csv'))
-dim_categories = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_categories.csv'))
-dim_tech_stack = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_tech_stacks.csv'))
-dim_severities = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_severities.csv'))
-dim_priorities = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'dim_priorities.csv'))
-
-# Translate IDs to names using map lookups
-env_map = dict(zip(dim_environments['environment_id'], dim_environments['environment_name']))
-dmn_map = dict(zip(dim_domains['domain_id'], dim_domains['domain_name']))
-cat_map = dict(zip(dim_categories['category_id'], dim_categories['category_name']))
-tes_map = dict(zip(dim_tech_stack['tech_stack_id'], dim_tech_stack['tech_stack_name']))
-sev_map = dict(zip(dim_severities['severity_id'], dim_severities['severity_name']))
-pri_map = dict(zip(dim_priorities['priority_id'], dim_priorities['priority_name']))
-
-# Convert numerical IDs into human-readable categorical string headers
-config.bug_data_filled["environment"] = config.bug_data_filled["environment_id"].map(env_map)
-config.bug_data_filled["bug_domain"] = config.bug_data_filled["domain_id"].map(dmn_map)
-config.bug_data_filled["bug_category"] = config.bug_data_filled["category_id"].map(cat_map)
-config.bug_data_filled["tech_stack"] = config.bug_data_filled["tech_stack_id"].map(tes_map)
-config.bug_data_filled["severity"] = config.bug_data_filled["severity_id"].map(sev_map)
-config.bug_data_filled["priority"] = config.bug_data_filled["priority_id"].map(pri_map)
+    config.bug_data = pd.read_csv(os.path.join(config.PROCESSED_DATA_DIR, 'normalized_dataset_bugs.csv'))
 
 # =====================================================================
 # Console Preparation
@@ -79,56 +56,26 @@ config.bug_data_filled["priority"] = config.bug_data_filled["priority_id"].map(p
 # Flush out previous command terminal print artifacts to make the report readable
 utils.clear_console()
 
-# =============================================================================================================
-# Feature Engineering & Composite Metrics
-# =============================================================================================================
-# Calculate unified balanced index scale value using uniform integer divisions (floor division)
-config.bug_data_filled["severity_priority"] = (config.bug_data_filled["severity_id"] + config.bug_data_filled["priority_id"]) // 2
-
-# =====================================================================
-# Feature Extraction Synthesis (NLP Text Synthesis)
-# =====================================================================
-# Concatenate unstructured summary components into a singular text array block
-config.bug_data_filled["text"] = (
-    config.bug_data_filled["title"].fillna("") +
-    " " +
-    config.bug_data_filled["description"].fillna("")
-)
-
 # =====================================================================
 # Array Isolations (Independent & Dependent Matrices)
 # =====================================================================
-# Filter specific multivariable data elements intended for training inputs
-x = config.bug_data_filled[
-    [
-        "text",
-        "error_code",
-        "bug_domain",
-        "bug_category",
-        "environment",
-        "tech_stack"
-    ]
-]
+#Extra metadata features showing urgency
+crash_pattern = r"|".join(CRASH_KEYWORDS)
+#Extract metadata features using efficient, vectorized pandas string methods
+config.bug_data["text_length"] = config.bug_data["text"].str.len().fillna(0).astype(int)
+config.bug_data["exclamation_count"] = (
+    config.bug_data["text"].str.count(r"!").fillna(0).astype(int)
+)
+#Vectorized keyword check (no slow .apply() or python loops)
+config.bug_data["has_crash_keyword"] = (
+    config.bug_data["text"]
+    .str.contains(crash_pattern, case=False, na=False)
+    .astype(int)
+)
 
-# Set the combined label value array as the dependent target output variable
-y = config.bug_data_filled["severity_priority"]
+x = config.bug_data[FEATURE_COLUMNS].copy()
+y = config.bug_data[TARGET_COLUMN].copy()
 
-# =====================================================================
-# Data Dimension Verification Logs
-# =====================================================================
-# Audit row counts representing distinct output targets
-print(f"\n{utils.color_text('[Target class distributions]', utils.CYAN + utils.BOLD)}")
-print(config.bug_data_filled["severity_priority"].value_counts().to_frame(name="Count"))
-
-# Verify multi-modal dataset row and column shapes prior to splitting
-print(f"\n{utils.color_text('[Feature matrix shape]', utils.CYAN + utils.BOLD)}")
-print(config.bug_data_filled.shape)
-
-
-# =====================================================================
-# Stratified Dataset Partitioning
-# =====================================================================
-# Allocate an 80/20 train-test division split, maintaining matching target category densities
 x_train, x_test, y_train, y_test = train_test_split(
     x,
     y,
@@ -137,111 +84,95 @@ x_train, x_test, y_train, y_test = train_test_split(
     stratify = y
 )
 
-# =====================================================================
-# Preprocessing Data Pipeline Architecture
-# =====================================================================
-# Build automatic transformations matching input data structural formats
+#Pipelines per feature type (includes imputation to prevent NaN crashes)
+text_transformer = TfidfVectorizer(
+    stop_words=list(CUSTOM_STOP_WORDS),
+    max_features=3000,
+    ngram_range=(1, 2),
+    min_df=10,
+    max_df=0.7,
+)
+
+categorical_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="constant", fill_value="unknown")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
+])
+
+numeric_transformer = Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler()),
+])
+
+#Master Preprocessor
 preprocessor = ColumnTransformer(
-    transformers = [
-         # Sub-Pipeline A: Numerical Text Vectorization via TF-IDF
-        (
-          "text",
-         TfidfVectorizer(
-             stop_words = 'english', #Remove common words
-             max_features = 3000, #Keeps 3000 most informative words
-             ngram_range = (1, 2), #Uses single and two-word phrases
-             min_df = 2 #Ignores words that only appear once)
-         ),
-         "text"
-        ),
-        # Sub-Pipeline B: Discrete Categorical One-Hot Conversion Encoding
-        (
-            "categorical",
-            # Convert text values into numeric dummy flag arrays, ignoring runtime mismatches
-            OneHotEncoder(handle_unknown="ignore"),
-            [
-                "error_code",           # Core Fix: Swapped out "text" column for missing error_code item
-                "bug_domain",
-                "bug_category",
-                "environment",
-                "tech_stack",
-            ]
-        )
+    transformers=[
+        ("text_tf_idf", text_transformer, "text"),
+        ("categorical", categorical_transformer, ["product_name", "component_name"]),
+        ("numeric", numeric_transformer, ["text_length", "exclamation_count", "has_crash_keyword"]),
     ]
 )
 
-# =====================================================================
-# Logistic Regression Model Architecture
-# =====================================================================
-# Construct an end-to-end execution pipeline binding preprocessing stages to a linear classifier
+#Ordinal Logistic Regression
 lr_pipeline = Pipeline([
     ("preprocessor", preprocessor),
-    ("classifier", LogisticRegression(max_iter=1000, random_state=42))
+    ("classifier", LogisticAT(max_iter = 5000))
 ])
 
-# Fit the underlying feature matrices and optimization parameters to training vectors
-lr_pipeline.fit(x_train, y_train)
-
-# Generate category predictions against the isolated test dataset split
-lr_predictions = lr_pipeline.predict(x_test)
-
-# =====================================================================
-# Random Forest Model Architecture
-# =====================================================================
-# Construct an ensemble tree pipeline utilizing identical preprocessing transformations
-rf_pipeline = Pipeline([
+lgb_pipeline = Pipeline([
     ("preprocessor", preprocessor),
-    ("classifier", RandomForestClassifier(
-        n_estimators=200,      # Generate a forest ensemble of 200 distinct decision tree branches
-        random_state=42,       # Establish an execution state seed variable to replicate findings
-        max_depth=None          # Expand leaf nodes dynamically until elements are completely homogeneous
+    ("classifier", LGBMClassifier(
+        objective = "multiclass",
+        class_weight = 'balanced',
+        n_estimators = 300,
+        learning_rate = 0.04,
+        max_depth = 6,
+        min_child_samples = 25,
+        num_leaves = 31,
+        random_state = 42,
+        n_jobs = -1,
+        verbose = -1
     ))
 ])
-
-# Train ensemble estimators utilizing uniform random bootstrap samples from historical records
-rf_pipeline.fit(x_train, y_train)
-
-# Generate category predictions from majority voting calculations across the tree nodes
-rf_predictions = rf_pipeline.predict(x_test)
 
 # =====================================================================
 # Logistic Regression Cross-Validation
 # =====================================================================
-# Output descriptive, colorized performance report headings for the linear architecture
-print(f"\n{utils.color_text('=== LOGISTIC REGRESSION CROSS-VALIDATION ===', utils.CYAN + utils.BOLD)}")
+# Output descriptive, colorized performance report headings for the ensemble tree architecture
+print(f"\n{utils.color_text('=== Logistic Regression Cross-validation ===', utils.GREEN + utils.BOLD)}")
 
-# Calculate cross-validation based on Logistic Regression execution
+#Calculate cross validation based on Logistic Regression execution
 lr_scores = cross_val_score(
     lr_pipeline,
     x,
     y,
-    cv=5,
-    scoring="accuracy"
+    cv = 5,
+    scoring = "accuracy"
 )
 
-# Print cross-validation validation scores arrays and mean values
-print(f"\n{utils.color_text('[Fold Accuracies]', utils.BOLD)}")
+#Print cross validation scores
+print(f"\n{utils.color_text('[Logistic Regression Cross-validation accuracy:]', utils.CYAN + utils.BOLD)}")
 print(lr_scores)
-print(f"\n{utils.color_text('[Mean Validation Accuracy]', utils.BOLD)}")
-print(f"{lr_scores.mean():.4f}")
+print(f"\n{utils.color_text('[Mean accuracy:]', utils.CYAN + utils.BOLD)}")
+print(lr_scores.mean())
+
 
 # =====================================================================
 # Random Forest Cross-Validation
 # =====================================================================
 # Output descriptive, colorized performance report headings for the ensemble tree architecture
-print(f"\n{utils.color_text('=== RANDOM FOREST CROSS-VALIDATION ===', utils.GREEN + utils.BOLD)}")
+print(f"\n{utils.color_text('=== Random Forest Cross-validation ===', utils.GREEN + utils.BOLD)}")
 
-# Calculate cross-validation based on Random Forest execution
-rf_scores = cross_val_score(
-    rf_pipeline,
+#Calculate cross validation based on Random Forest execution
+scores = cross_val_score(
+    lgb_pipeline,
     x,
     y,
-    cv=5,
-    scoring="accuracy"
+    cv = 5,
+    scoring = "accuracy"
 )
 
-# Print cross-validation validation scores arrays and mean values
-print(f"\n{utils.color_text('[Fold Accuracies]', utils.BOLD)}")
-print(rf_scores)
-print(f"\n{utils.color_text('[Mean Validation Accuracy]', utils.BOLD)}")
-print(f"{rf_scores.mean():.4f}")
+#Print cross validation scores
+print(f"\n{utils.color_text('[LGBM Cross-validation accuracy:]', utils.CYAN + utils.BOLD)}")
+print(scores)
+print(f"\n{utils.color_text('[Mean accuracy:]', utils.CYAN + utils.BOLD)}")
+print(scores.mean())
