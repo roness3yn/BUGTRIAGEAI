@@ -195,4 +195,44 @@ def clean_bug_text(text):
 
     return text
 
+#create priority variable
+def assign_priority(row):
+  if row["severity_rating"] == 3:
+    if row["environment"] == "production":
+      row["priority"] = "critical"
+    elif row["environment"] == "staging":
+      row["priority"] = "critical"
+    elif row["environment"] == "development":
+      row["priority"] = "high"
+  elif row["severity_rating"] == 2:
+    if row["environment"] == "production":
+      row["priority"] = "medium"
+    elif row["environment"] == "staging":
+      row["priority"] = "medium"
+    elif row["environment"] == "development":
+      row["priority"] = "low"
+  elif row["severity_rating"] == 1:
+    if row["environment"] == "production":
+      row["priority"] = "medium"
+    elif row["environment"] == "staging":
+      row["priority"] = "low"
+    elif row["environment"] == "development":
+      row["priority"] = "low"
+
+  return row["priority"]
+
+#report how quickly the bug should be handled
+def assign_escalation_level(row):
+    severity = int(row["severity_rating"])
+    priority = row["priority"]
+    environment = row["environment"]
+
+    if priority == "critical":
+        return "Immediate escalation"
+    elif priority == "high" and environment == "production":
+        return "Escalate within 1 hour"
+    elif severity >= 3:
+        return "Same-day review"
+
+    return "Standard queue"
 

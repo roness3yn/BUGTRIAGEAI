@@ -1,4 +1,5 @@
 import re
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 # 1. Define sets outside the function (fixed missing commas & lowercased)
 ENV_KEYWORDS = {
@@ -104,4 +105,17 @@ FEATURE_COLUMNS = [
     "has_crash_keyword",
     "component_name",
 ]
+
 TARGET_COLUMN = "severity_rating"
+
+CUSTOM_STOP_WORDS = set(ENGLISH_STOP_WORDS).union({
+    "test",
+    "testresult",
+    "users",
+    "showing",
+    "checking",
+    "complete",
+    "backtrace",
+    "case",
+    "description",
+})
