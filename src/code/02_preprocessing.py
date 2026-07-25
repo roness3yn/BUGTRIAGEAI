@@ -10,12 +10,14 @@
 import os
 import sys
 import pandas as pd
+from pandas.core.indexes import category
 import numpy as np
 
 # =====================================================================
 # Data Visualization Libraries
 # =====================================================================
 import matplotlib.pyplot as plt
+import plotly.express as px
 import seaborn as sns
 
 # =====================================================================
@@ -100,3 +102,69 @@ y = config.bug_data[TARGET_COLUMN].copy()
 # Print target class distribution instead of raw print
 print(f"\n{utils.color_text('[Target class distribution]:', utils.CYAN + utils.BOLD)}")
 print(y.value_counts(dropna=False))
+
+
+# =============================================================================================================
+# Visualisation
+# =============================================================================================================
+#Frequency Plot of Severity based on Bug Category
+severity_counts = config.bug_data["severity_rating"].value_counts()
+plt.figure(figsize=(10, 6))
+sns.barplot(x=severity_counts.index, y=severity_counts.values, palette='viridis')
+plt.title('Frequency of Severity Categories')
+plt.xlabel('Severity Category')
+plt.ylabel('Frequency')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+#Plot of severity by environment
+severity_by_environment = config.bug_data.groupby("environment")["severity_rating"].mean().sort_values(ascending=False)
+
+#Bar Plot of Severity by Environment
+plt.figure(figsize=(12, 6))
+sns.barplot(x=severity_by_environment.index, y=severity_by_environment.values, palette='viridis')
+plt.title('Mean Severity Rating by Environment')
+plt.xlabel('Environment')
+plt.ylabel('Mean Severity Rating')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+#Bar Plot of Priority by Environment
+count = config.bug_data.groupby(["priority", "environment"]).size().reset_index(name="count")
+count = count.pivot(index="priority", columns="environment", values="count")
+print(f"\n{utils.color_text('[Priority by Environment]:', utils.CYAN + utils.BOLD)}")
+print(count)
+fig = px.bar(count, barmode="stack", title="Priority per Environment")
+fig.update_layout(xaxis_title="Priority", yaxis_title="Count", xaxis_tickangle=-45)
+category_order = ["critical", "high", "medium", "low"]
+fig.update_xaxes(categoryorder="array", categoryarray=category_order)
+fig.show()
+
+#Plot of Priority Frequency
+priority_counts = config.bug_data["priority"].value_counts()
+plt.figure(figsize=(10, 6))
+sns.barplot(x=priority_counts.index, y=priority_counts.values, palette='viridis')
+plt.title('Frequency of Priority Categories')
+plt.xlabel('Severity Category')
+plt.ylabel('Frequency')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+#create chart of target role assignments with bug count ordered by priority
+count = config.bug_data.groupby(["priority", "target_role"]).size().reset_index(name="count")
+count = count.pivot(index="priority", columns="target_role", values="count")
+print(f"\n{utils.color_text('[Target role assignments with bug count ordered by priority]:', utils.CYAN + utils.BOLD)}")
+print(count)
+fig = px.bar(count, barmode="stack", title="Target Role Assignments by Priority")
+fig.update_layout(xaxis_title="Priority", yaxis_title="Count", xaxis_tickangle=-45)
+category_order = ["critical", "high", "medium", "low"]
+fig.update_xaxes(categoryorder="array", categoryarray=category_order)
+fig.show()
+
+environment_role = config.bug_data.groupby(["environment", "target_role"]).size().reset_index(name="count")
+environment_role = environment_role.pivot(index="environment", columns="target_role", values="count")
+print(f"\n{utils.color_text('[Environment Role]:', utils.CYAN + utils.BOLD)}")
+print(environment_role)
