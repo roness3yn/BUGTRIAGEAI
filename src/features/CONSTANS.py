@@ -86,3 +86,22 @@ PRODUCT_TERMS = {
 }
 
 GENERIC_COMPONENTS = {"other", "general", "-unknown", "unknown", "", "nan"}
+
+CRASH_KEYWORDS = [
+    "crash",
+    "blocker",
+    "nullpointer",
+    "down",
+    "broken",
+    "fatal",
+]
+
+FEATURE_COLUMNS = [
+    "text",
+    "product_name",
+    "text_length",
+    "exclamation_count",
+    "has_crash_keyword",
+    "component_name",
+]
+TARGET_COLUMN = "severity_rating"
