@@ -1,4 +1,5 @@
 from src.features.CONSTANS import ENV_KEYWORDS, GENERIC_COMPONENTS, FRONTEND_TERMS, BACKEND_TERMS, SYSTEMS_TERMS, DATABASE_TERMS, DEVOPS_TERMS, PRODUCT_TERMS
+import re
 
 def calculate_severity_score(row):
     score = 0
@@ -177,5 +178,21 @@ def assign_target_role(row: dict) -> str:
         role_scores["Software Developer"] = 3
 
     return max(role_scores, key=role_scores.get)
+
+def clean_bug_text(text):
+    if not isinstance(text, str):
+        return ""
+    text = text.lower()
+    #Strip HTML tags
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&\w+;', ' ', text)
+    text = re.sub(r'0x[0-9a-fA-F]+', ' ', text)
+    text = re.sub(r'/[a-zA-Z0-9_\-\.]+/[a-zA-Z0-9_\-\./]+', ' ', text)
+    text = re.sub(r'[a-zA-Z]:\\[a-zA-Z0-9_\-\\]+', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'\b\d+\b', ' ', text)
+    text = re.sub(r'\b\w{1,3}\b', ' ', text)
+
+    return text
 
 
