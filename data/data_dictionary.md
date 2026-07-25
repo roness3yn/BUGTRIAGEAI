@@ -1,449 +1,284 @@
 # Data Dictionary
 
-## Overview
-
-This project contains a synthetic bug tracking dataset designed for learning, analytics, SQL practice, machine learning, and business intelligence.
-
-The project includes:
-
-- A raw dataset
-- A cleaned/corrected dataset
-- A fully normalized relational database structure
-- Dimension tables
-- A Python script that performs the normalization process
-
-The normalized structure follows database normalization principles (3NF) and is ready for SQL databases such as SQL Server, PostgreSQL, MySQL, or SQLite.
+This document provides an overview of the datasets included in the project. Each dataset is described with its file path, purpose, and schema.
 
 ---
 
-# Project Structure
-
-```
-data/
-│
-├── raw/
-│   ├── bug_dataset_with_priority_and_severity.csv
-│   └── bug_dataset_with_priority_and_severity_corrected.csv
-│
-├── processed/
-│   ├── normalized_dataset_bugs.csv
-│   ├── dim_priorities.csv
-│   ├── dim_severities.csv
-│   ├── dim_categories.csv
-│   ├── dim_domains.csv
-│   ├── dim_environments.csv
-│   ├── dim_tech_stacks.csv
-│   └── dim_developer_roles.csv
-│
-└── scripts/
-    └── normalize_bugs.py
-```
+## Project Structure
+data/ 
+       ├── data_dictionary.md 
+       ├── code/ 
+       │ └── normalize_bugs.py 
+       ├── processed/ 
+       │ ├── dim_products.csv 
+       │ ├── dim_severities.csv 
+       │ ├── dim_roles.csv 
+       │ ├── dim_environments.csv 
+       │ ├── normalized_dataset_bugs.csv 
+       │ ├── normalized_dataset_bugs.zip 
+       │ └── dim_priorities.csv └── raw/ 
+       ├── winehq_bug_report_data.csv 
+       ├── freedesktop_bug_report_data.csv 
+       ├── bug_dataset.csv 
+       ├── eclipse_bug_report_data.csv 
+       ├── gcc_bug_report_data.csv 
+       ├── mozilla_bug_report_data.csv └── gnome_bug_report_data.csv
 
 ---
 
-# File Descriptions
+## Raw Data Files
+
+### 1. `data/raw/winehq_bug_report_data.csv`
+- **Description**: Raw bug report data from the WineHQ project.
+- **Columns**:
+  | Column Name           | Description                          |
+  |-----------------------|--------------------------------------|
+  | `bug_id`              | Unique identifier for the bug.       |
+  | `creation_date`       | Date the bug was created.            |
+  | `component_name`      | Component associated with the bug.   |
+  | `product_name`        | Product associated with the bug.     |
+  | `short_description`   | Short description of the bug.        |
+  | `long_description`    | Detailed description of the bug.     |
+  | `assignee_name`       | Name of the person assigned to fix.  |
+  | `reporter_name`       | Name of the person who reported it.  |
+  | `resolution_category` | Category of the resolution.          |
+  | `resolution_code`     | Code representing the resolution.    |
+  | `status_category`     | Category of the bug's status.        |
+  | `status_code`         | Code representing the status.        |
+  | `update_date`         | Date the bug was last updated.       |
+  | `quantity_of_votes`   | Number of votes the bug received.    |
+  | `quantity_of_comments`| Number of comments on the bug.       |
+  | `resolution_date`     | Date the bug was resolved.           |
+  | `bug_fix_time`        | Time taken to fix the bug.           |
+  | `severity_category`   | Category of the bug's severity.      |
+  | `severity_code`       | Code representing the severity.      |
+
+### 2. `data/raw/freedesktop_bug_report_data.csv`
+- **Description**: Raw bug report data from the FreeDesktop project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 3. `data/raw/bug_dataset.csv`
+- **Description**: Consolidated raw bug report dataset.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 4. `data/raw/eclipse_bug_report_data.csv`
+- **Description**: Raw bug report data from the Eclipse project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 5. `data/raw/gcc_bug_report_data.csv`
+- **Description**: Raw bug report data from the GCC project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 6. `data/raw/mozilla_bug_report_data.csv`
+- **Description**: Raw bug report data from the Mozilla project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 7. `data/raw/gnome_bug_report_data.csv`
+- **Description**: Raw bug report data from the GNOME project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
 
 ---
 
-## bug_dataset_with_priority_and_severity.csv
+## Processed Data Files
 
-### Description
+### 1. `data/processed/normalized_dataset_bugs.csv`
+- **Description**: Normalized dataset containing bug reports with relational references to dimension tables.
+- **Columns**:
+  | Column Name           | Description                          |
+  |-----------------------|--------------------------------------|
+  | `bug_id`              | Unique identifier for the bug.       |
+  | `creation_date`       | Date the bug was created.            |
+  | `component_name`      | Component associated with the bug.   |
+  | `product_name`        | Product associated with the bug.     |
+  | `short_description`   | Short description of the bug.        |
+  | `long_description`    | Detailed description of the bug.     |
+  | `assignee_name`       | Name of the person assigned to fix.  |
+  | `reporter_name`       | Name of the person who reported it.  |
+  | `resolution_category` | Category of the resolution.          |
+  | `resolution_code`     | Code representing the resolution.    |
+  | `status_category`     | Category of the bug's status.        |
+  | `status_code`         | Code representing the status.        |
+  | `update_date`         | Date the bug was last updated.       |
+  | `quantity_of_votes`   | Number of votes the bug received.    |
+  | `quantity_of_comments`| Number of comments on the bug.       |
+  | `resolution_date`     | Date the bug was resolved.           |
+  | `bug_fix_time`        | Time taken to fix the bug.           |
+  | `severity_category`   | Category of the bug's severity.      |
+  | `severity_code`       | Code representing the severity.      |
+  | `severity_rating`     | Rating of the bug's severity.        |
+  | `text`                | Additional text information.         |
+  | `environment`         | Environment where the bug occurred.  |
+  | `priority`            | Priority of the bug.                 |
+  | `target_role`         | Role targeted for fixing the bug.    |
 
-The original synthetic bug dataset.
+### 2. `data/processed/dim_products.csv`
+- **Description**: Dimension table for products.
+- **Columns**:
+  | Column Name   | Description                          |
+  |---------------|--------------------------------------|
+  | `product_id`  | Unique identifier for the product.   |
+  | `product_name`| Name of the product.                |
 
-Every record represents a single software bug reported by a tester or user.
+### 3. `data/processed/dim_severities.csv`
+- **Description**: Dimension table for severities.
+- **Columns**:
+  | Column Name    | Description                          |
+  |----------------|--------------------------------------|
+  | `severity_id`  | Unique identifier for the severity.  |
+  | `severity_name`| Name of the severity.               |
 
-This dataset contains descriptive values such as:
+### 4. `data/processed/dim_roles.csv`
+- **Description**: Dimension table for roles.
+- **Columns**:
+  | Column Name | Description                          |
+  |-------------|--------------------------------------|
+  | `role_id`   | Unique identifier for the role.      |
+  | `role_name` | Name of the role.                   |
 
-- Priority names
-- Severity names
-- Environment names
-- Technology stack names
-- Bug category names
+### 5. `data/processed/dim_environments.csv`
+- **Description**: Dimension table for environments.
+- **Columns**:
+  | Column Name       | Description                          |
+  |-------------------|--------------------------------------|
+  | `environment_id`  | Unique identifier for the environment. |
+  | `environment_name`| Name of the environment.            |
 
-These values are stored directly inside every row, making the dataset suitable for analysis but not ideal for relational databases.
-
-### Typical Uses
-
-- Data exploration
-- Data cleaning exercises
-- Machine Learning
-- Feature engineering
-- Pandas practice
-- CSV analysis
-
----
-
-## bug_dataset_with_priority_and_severity_corrected.csv
-
-### Description
-
-An improved version of the original dataset.
-
-It contains corrected values, standardized categories, cleaned formatting, and validated data.
-
-Use this file whenever possible.
-
-### Typical Uses
-
-- Production analytics
-- ML model training
-- SQL import
-- Visualization
-- Dashboard creation
-
----
-
-## normalize_bugs.py
-
-### Description
-
-This Python script converts the raw dataset into a normalized relational model.
-
-The script automatically:
-
-- Loads the raw dataset
-- Cleans the date column
-- Creates all lookup (dimension) tables
-- Generates numeric IDs
-- Replaces text values with foreign keys
-- Produces the normalized fact table
-- Saves every generated CSV file
-
-### Generated Files
-
-Running this script creates:
-
-- normalized_dataset_bugs.csv
-- dim_priorities.csv
-- dim_severities.csv
-- dim_categories.csv
-- dim_domains.csv
-- dim_environments.csv
-- dim_tech_stacks.csv
-- dim_developer_roles.csv
-
-### Skills You Can Learn
-
-- Pandas
-- Data Cleaning
-- ETL
-- Database Normalization
-- Foreign Keys
-- Dimension Tables
-- Data Engineering
+### 6. `data/processed/dim_priorities.csv`
+- **Description**: Dimension table for priorities.
+- **Columns**:
+  | Column Name    | Description                          |
+  |----------------|--------------------------------------|
+  | `priority_id`  | Unique identifier for the priority.  |
+  | `priority_name`| Name of the priority.               |
 
 ---
 
-# Processed Dataset
+Let me know if further adjustments are needed!
+---
+
+## Raw Data Files
+
+### 1. `data/raw/winehq_bug_report_data.csv`
+- **Description**: Raw bug report data from the WineHQ project.
+- **Columns**:
+  | Column Name           | Description                          |
+  |-----------------------|--------------------------------------|
+  | `bug_id`              | Unique identifier for the bug.       |
+  | `creation_date`       | Date the bug was created.            |
+  | `component_name`      | Component associated with the bug.   |
+  | `product_name`        | Product associated with the bug.     |
+  | `short_description`   | Short description of the bug.        |
+  | `long_description`    | Detailed description of the bug.     |
+  | `assignee_name`       | Name of the person assigned to fix.  |
+  | `reporter_name`       | Name of the person who reported it.  |
+  | `resolution_category` | Category of the resolution.          |
+  | `resolution_code`     | Code representing the resolution.    |
+  | `status_category`     | Category of the bug's status.        |
+  | `status_code`         | Code representing the status.        |
+  | `update_date`         | Date the bug was last updated.       |
+  | `quantity_of_votes`   | Number of votes the bug received.    |
+  | `quantity_of_comments`| Number of comments on the bug.       |
+  | `resolution_date`     | Date the bug was resolved.           |
+  | `bug_fix_time`        | Time taken to fix the bug.           |
+  | `severity_category`   | Category of the bug's severity.      |
+  | `severity_code`       | Code representing the severity.      |
+
+### 2. `data/raw/freedesktop_bug_report_data.csv`
+- **Description**: Raw bug report data from the FreeDesktop project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 3. `data/raw/bug_dataset.csv`
+- **Description**: Consolidated raw bug report dataset.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 4. `data/raw/eclipse_bug_report_data.csv`
+- **Description**: Raw bug report data from the Eclipse project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 5. `data/raw/gcc_bug_report_data.csv`
+- **Description**: Raw bug report data from the GCC project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 6. `data/raw/mozilla_bug_report_data.csv`
+- **Description**: Raw bug report data from the Mozilla project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
+
+### 7. `data/raw/gnome_bug_report_data.csv`
+- **Description**: Raw bug report data from the GNOME project.
+- **Columns**: Same as `winehq_bug_report_data.csv`.
 
 ---
 
-## normalized_dataset_bugs.csv
+## Processed Data Files
 
-### Description
+### 1. `data/processed/normalized_dataset_bugs.csv`
+- **Description**: Normalized dataset containing bug reports with relational references to dimension tables.
+- **Columns**:
+  | Column Name           | Description                          |
+  |-----------------------|--------------------------------------|
+  | `bug_id`              | Unique identifier for the bug.       |
+  | `creation_date`       | Date the bug was created.            |
+  | `component_name`      | Component associated with the bug.   |
+  | `product_name`        | Product associated with the bug.     |
+  | `short_description`   | Short description of the bug.        |
+  | `long_description`    | Detailed description of the bug.     |
+  | `assignee_name`       | Name of the person assigned to fix.  |
+  | `reporter_name`       | Name of the person who reported it.  |
+  | `resolution_category` | Category of the resolution.          |
+  | `resolution_code`     | Code representing the resolution.    |
+  | `status_category`     | Category of the bug's status.        |
+  | `status_code`         | Code representing the status.        |
+  | `update_date`         | Date the bug was last updated.       |
+  | `quantity_of_votes`   | Number of votes the bug received.    |
+  | `quantity_of_comments`| Number of comments on the bug.       |
+  | `resolution_date`     | Date the bug was resolved.           |
+  | `bug_fix_time`        | Time taken to fix the bug.           |
+  | `severity_category`   | Category of the bug's severity.      |
+  | `severity_code`       | Code representing the severity.      |
+  | `severity_rating`     | Rating of the bug's severity.        |
+  | `text`                | Additional text information.         |
+  | `environment`         | Environment where the bug occurred.  |
+  | `priority`            | Priority of the bug.                 |
+  | `target_role`         | Role targeted for fixing the bug.    |
 
-This is the central fact table.
+### 2. `data/processed/dim_products.csv`
+- **Description**: Dimension table for products.
+- **Columns**:
+  | Column Name   | Description                          |
+  |---------------|--------------------------------------|
+  | `product_id`  | Unique identifier for the product.   |
+  | `product_name`| Name of the product.                |
 
-It contains one row for every bug.
+### 3. `data/processed/dim_severities.csv`
+- **Description**: Dimension table for severities.
+- **Columns**:
+  | Column Name    | Description                          |
+  |----------------|--------------------------------------|
+  | `severity_id`  | Unique identifier for the severity.  |
+  | `severity_name`| Name of the severity.               |
 
-Instead of storing descriptive text, it stores foreign key IDs pointing to the corresponding dimension tables.
+### 4. `data/processed/dim_roles.csv`
+- **Description**: Dimension table for roles.
+- **Columns**:
+  | Column Name | Description                          |
+  |-------------|--------------------------------------|
+  | `role_id`   | Unique identifier for the role.      |
+  | `role_name` | Name of the role.                   |
 
-### Example
+### 5. `data/processed/dim_environments.csv`
+- **Description**: Dimension table for environments.
+- **Columns**:
+  | Column Name       | Description                          |
+  |-------------------|--------------------------------------|
+  | `environment_id`  | Unique identifier for the environment. |
+  | `environment_name`| Name of the environment.            |
 
-Instead of
-
-```
-Priority = High
-```
-
-it stores
-
-```
-priority_id = 3
-```
-
-This dramatically reduces duplicated data and improves database performance.
-
-### Relationships
-
-The table references:
-
-- Priority
-- Severity
-- Category
-- Domain
-- Environment
-- Technology Stack
-- Developer Role
-
-### Typical Uses
-
-- SQL joins
-- Power BI
-- Tableau
-- Star Schema
-- Machine Learning
-- Reporting
-
----
-
-# Dimension Tables
-
-Dimension tables store unique values only once.
-
-They eliminate duplicated text and create relationships inside the database.
-
----
-
-## dim_priorities.csv
-
-### Description
-
-Contains all possible bug priorities.
-
-Columns
-
-| Column | Description |
-|---------|-------------|
-| priority_id | Primary Key |
-| priority_name | Low, Normal, High, Urgent |
-
-Example
-
-| priority_id | priority_name |
-|-------------|---------------|
-|1|Low|
-|2|Normal|
-|3|High|
-|4|Urgent|
+### 6. `data/processed/dim_priorities.csv`
+- **Description**: Dimension table for priorities.
+- **Columns**:
+  | Column Name    | Description                          |
+  |----------------|--------------------------------------|
+  | `priority_id`  | Unique identifier for the priority.  |
+  | `priority_name`| Name of the priority.               |
 
 ---
-
-## dim_severities.csv
-
-### Description
-
-Contains all bug severity levels.
-
-Columns
-
-- severity_id
-- severity_name
-
-Possible values
-
-- Low
-- Medium
-- High
-- Critical
-
----
-
-## dim_categories.csv
-
-### Description
-
-Stores software bug categories.
-
-Examples
-
-- UI
-- Backend
-- API
-- Database
-- Performance
-- Authentication
-
-Purpose
-
-Categorizing bugs for reporting and analytics.
-
----
-
-## dim_domains.csv
-
-### Description
-
-Stores business domains where bugs occurred.
-
-Examples
-
-- Finance
-- Healthcare
-- E-Commerce
-- Education
-- Government
-
-Purpose
-
-Business intelligence and reporting.
-
----
-
-## dim_environments.csv
-
-### Description
-
-Stores execution environments.
-
-Examples
-
-- Development
-- QA
-- Staging
-- Production
-
-Purpose
-
-Environment-specific analytics.
-
----
-
-## dim_tech_stacks.csv
-
-### Description
-
-Stores technologies associated with the bug.
-
-Examples
-
-- React
-- Angular
-- Vue
-- .NET
-- Java
-- Python
-- Node.js
-
-Purpose
-
-Technology trend analysis.
-
----
-
-## dim_developer_roles.csv
-
-### Description
-
-Stores the developer role responsible for resolving the issue.
-
-Examples
-
-- Frontend Developer
-- Backend Developer
-- Full Stack Developer
-- DevOps Engineer
-- QA Engineer
-- Database Developer
-
-Purpose
-
-Resource planning and workload analysis.
-
----
-
-# Database Relationships
-
-```
-                dim_priorities
-                       |
-                priority_id
-                       |
-                       |
-dim_severities --- normalized_dataset_bugs --- dim_categories
-                       |
-                       |
-                 dim_domains
-                       |
-                 dim_environments
-                       |
-                dim_tech_stacks
-                       |
-             dim_developer_roles
-```
-
----
-
-# Recommended Learning Path
-
-Beginners should explore the project in the following order:
-
-1. Open the original dataset.
-2. Explore all columns.
-3. Understand duplicated values.
-4. Study database normalization.
-5. Review the Python normalization script.
-6. Examine each generated dimension table.
-7. Understand primary keys.
-8. Understand foreign keys.
-9. Study the normalized fact table.
-10. Import the tables into SQL Server or PostgreSQL.
-11. Write JOIN queries.
-12. Build dashboards using Power BI.
-13. Train Machine Learning models using the normalized data.
-
----
-
-# Suggested SQL Exercises
-
-Practice writing queries such as:
-
-- Count bugs by severity
-- Count bugs by priority
-- Top bug categories
-- Bugs by technology stack
-- Bugs by developer role
-- Bugs by environment
-- Average resolution time
-- Critical bugs in Production
-- Monthly bug trends
-- Priority vs Severity analysis
-
----
-
-# Suggested Machine Learning Projects
-
-This dataset can be used to build models that predict:
-
-- Bug priority
-- Bug severity
-- Estimated resolution time
-- Assigned developer role
-- Bug category
-- Production risk
-- Root cause prediction
-
----
-
-# Business Intelligence Ideas
-
-Build dashboards showing:
-
-- Total bugs
-- Open vs Closed bugs
-- Bugs by month
-- Bugs by category
-- Bugs by technology
-- Bugs by developer
-- Bugs by environment
-- Critical production issues
-- Average fix time
-- Severity distribution
-
----
-
-# Summary
-
-This project demonstrates a complete real-world data engineering workflow:
-
-- Raw data collection
-- Data cleaning
-- ETL processing
-- Database normalization
-- Relational modeling
-- SQL-ready datasets
-- Business Intelligence preparation
-- Machine Learning feature preparation
-
-It provides an excellent foundation for learning Data Engineering, SQL, Python, Power BI, Database Design, and Machine Learning using a realistic software bug tracking scenario.
