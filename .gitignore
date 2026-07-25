@@ -1,0 +1,22 @@
+# -------------------------------------------------------------
+# Data Files & Directories
+# -------------------------------------------------------------
+# Ignore only the 132 MB file
+data/processed/normalized_dataset_bugs.csv
+
+# Exception: If you compress CSVs into ZIPs and want to keep ZIPs tracked:
+!*.zip
+
+# -------------------------------------------------------------
+# Python Environment & Cache
+# -------------------------------------------------------------
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# -------------------------------------------------------------
+# Operating System Files
+# -------------------------------------------------------------
+.DS_Store
+Thumbs.db

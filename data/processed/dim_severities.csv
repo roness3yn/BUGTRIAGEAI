@@ -1,5 +1,7 @@
 severity_id,severity_name
-1,Low
-2,Medium
-3,High
-4,Critical
+1,trivial
+2,minor
+3,normal
+4,major
+5,critical
+6,blocker
