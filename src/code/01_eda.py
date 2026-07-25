@@ -97,3 +97,31 @@ print(config.bug_data.info())
 # Output a randomized distribution sample of 5 items to audit random variance
 print(f"\n{utils.color_text('[Data sample]', utils.CYAN + utils.BOLD)}")
 print(config.bug_data.sample(5))
+
+#Number of bugs
+print(f"\n{utils.color_text('[Number of bugs]', utils.CYAN + utils.BOLD)}")
+print(len(config.bug_data))
+
+#Number of errors per component name
+print(f"\n{utils.color_text('[Number of errors per component name]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data["component_name"].value_counts())
+
+#Number of errors per severity
+print(f"\n{utils.color_text('[Number of errors per severity]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data["severity_category"].value_counts())
+
+#Number of errors per bug_fix_time
+print(f"\n{utils.color_text('[Number of errors per bug fix time]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data["bug_fix_time"].value_counts())
+
+#Highest and lowest severity by product name
+print(f"\n{utils.color_text('[Severity by product name]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data.groupby("product_name")["severity_rating"].mean().sort_values(ascending = True).head(10), config.bug_data.groupby("product_name")["severity_rating"].mean().sort_values(ascending = True).tail(10))
+
+#Severity by bug fix time
+print(f"\n{utils.color_text('[Severity by environment]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data.groupby("environment")["severity_rating"].mean().sort_values(ascending = True).head(10), config.bug_data.groupby("bug_fix_time")["severity_rating"].mean().sort_values(ascending = True).tail(10))
+
+#Severity by component
+print(f"\n{utils.color_text('[Severity by component]', utils.CYAN + utils.BOLD)}")
+print(config.bug_data.groupby("component_name")["severity_rating"].mean().sort_values(ascending = True).head(10), config.bug_data.groupby("component_name")["severity_rating"].mean().sort_values(ascending = True).tail(10))
