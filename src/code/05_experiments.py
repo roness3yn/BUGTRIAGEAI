@@ -182,8 +182,11 @@ report_columns = [
 ]
 
 bug_triage_report = config.bug_data[report_columns].copy()
-
+print(f"\n{utils.color_text('[Bug Triage Report (Head-10):]', utils.CYAN + utils.BOLD)}")
 print(bug_triage_report.head(10))
+mean_confidence = config.bug_data["confidence_score"].mean()
+print(f"\n{utils.color_text('[Mean Confidence Score:]', utils.CYAN + utils.BOLD)}")
+print(mean_confidence)
 
 bug_triage_report.to_csv(
     "future_bug_triage_report.csv",
